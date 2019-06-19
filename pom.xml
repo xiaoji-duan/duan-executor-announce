@@ -84,6 +84,11 @@
 			 <artifactId>vertx-rabbitmq-client</artifactId>
        <version>${vertx.version}</version>
 		</dependency>
+		<dependency>
+	    <groupId>cn.jpush.api</groupId>
+	    <artifactId>jpush-client</artifactId>
+	    <version>3.3.11</version>
+		</dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-launcher</artifactId>

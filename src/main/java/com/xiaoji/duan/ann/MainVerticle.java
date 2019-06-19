@@ -2,6 +2,15 @@ package com.xiaoji.duan.ann;
 
 import org.apache.commons.lang3.StringUtils;
 
+import cn.jiguang.common.ClientConfig;
+import cn.jpush.api.JPushClient;
+import cn.jpush.api.device.TagAliasResult;
+import cn.jpush.api.push.PushResult;
+import cn.jpush.api.push.model.Platform;
+import cn.jpush.api.push.model.PushPayload;
+import cn.jpush.api.push.model.audience.Audience;
+import cn.jpush.api.push.model.audience.AudienceTarget;
+import cn.jpush.api.push.model.notification.Notification;
 import io.vertx.amqpbridge.AmqpBridge;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -23,6 +32,7 @@ public class MainVerticle extends AbstractVerticle {
 	private AmqpBridge bridge = null;
 	private MongoClient mongodb = null;
 	private RabbitMQClient rabbitmq = null;
+	private JPushClient jpushClient = null;
 
 	@Override
 	public void start(Future<Void> startFuture) throws Exception {
@@ -53,6 +63,17 @@ public class MainVerticle extends AbstractVerticle {
 				System.out.println("rabbitmq connect failed with " + handler.cause().getMessage());
 			}
 		});
+		
+		ClientConfig jpushconfig = ClientConfig.getInstance();
+		jpushconfig.setMaxRetryTimes(config().getJsonObject("jpush", new JsonObject()).getInteger("maxretry", 5));
+		jpushconfig.setConnectionTimeout(config().getJsonObject("jpush", new JsonObject()).getInteger("timeout", 10000));	// 10 seconds
+		jpushconfig.setSSLVersion(config().getJsonObject("jpush", new JsonObject()).getString("sslversion", "TLSv1.1"));		// JPush server supports SSLv3, TLSv1, TLSv1.1, TLSv1.2
+		
+		jpushClient = new JPushClient(
+				config().getJsonObject("jpush", new JsonObject()).getString("secret", ""),
+				config().getJsonObject("jpush", new JsonObject()).getString("appkey", ""),
+				null,
+				jpushconfig);
 	}
 
 	private void connectStompServer() {
@@ -75,6 +96,21 @@ public class MainVerticle extends AbstractVerticle {
 	
 	public static String getShortContent(String origin) {
 		return origin.length() > 512 ? origin.substring(0, 512) : origin;
+	}
+	
+	private PushPayload buildPushObject_android(TagAliasResult tagalias) {
+        return PushPayload.newBuilder()
+        		.setPlatform(Platform.android())
+        		.setAudience(Audience.newBuilder()
+                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
+                        .build())
+        		.setMessage(cn.jpush.api.push.model.Message.newBuilder()
+                        .setMsgContent("Test from API Example - msgContent")
+                        .addExtra("from", "JPush")
+                        .build())
+        		.setNotification(Notification.alert("Test for Alert"))
+        		.build();
 	}
 	
 	/**
@@ -164,6 +200,7 @@ public class MainVerticle extends AbstractVerticle {
 						String openId = userinfo.getJsonObject("data").getString("openid");
 
 						if (openId == null || StringUtils.isEmpty(openId)) {
+							//账户不存在通过短消息提醒
 							System.out.println("announce by sms to " + openid);
 							
 							if (cachestore) {
@@ -186,9 +223,38 @@ public class MainVerticle extends AbstractVerticle {
 							sendShortMessages(openid, sms);
 
 						} else {
+							//账户已存在通过冥王星消息队列推送
 							String routingkey = "mwxing." + unionId;
 							System.out.println("announce by mwxing message to " + routingkey);
 							sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+							
+							//同时通过极光推送
+							if (userinfo.containsKey("device")) {
+								JsonObject device = userinfo.getJsonObject("device", new JsonObject());
+								
+						        System.out.println("JPush consider with " + device.encode());
+						        
+								String jpushId = device.getJsonObject("jpush", new JsonObject()).getString("id", "");
+
+								// 如果Jpush Id不存在则不推送
+								if (!StringUtils.isEmpty(jpushId)) {
+									try {
+										//获取别名
+								        TagAliasResult aliasresult = jpushClient.getDeviceTagAlias(jpushId);
+								        
+								        PushPayload payload = buildPushObject_android(aliasresult);
+								        
+								        PushResult result = jpushClient.sendPush(payload);
+								        System.out.println("JPush responsed with " + result);
+									} catch(Exception e) {
+										e.printStackTrace();
+									}
+								}
+								
+							} else {
+						        System.out.println("JPush skipped without device info.");
+							}
+
 						}
 						
 					} else {
