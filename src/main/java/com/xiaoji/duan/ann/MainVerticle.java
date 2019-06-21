@@ -114,14 +114,28 @@ public class MainVerticle extends AbstractVerticle {
 			}
 		}
 		
-        return PushPayload.newBuilder()
-        		.setPlatform(Platform.android())
-        		.setAudience(Audience.newBuilder()
-                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
-                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
-                        .build())
-        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), extras))
-        		.build();
+		if (StringUtils.isEmpty(payload.getString("title", "")) || StringUtils.isEmpty(payload.getString("content", ""))) {
+	        return PushPayload.newBuilder()
+	        		.setPlatform(Platform.android())
+	        		.setAudience(Audience.newBuilder()
+	                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+	                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
+	                        .build())
+	        		.setMessage(cn.jpush.api.push.model.Message.newBuilder()
+	        				.setMsgContent(extras.get("event"))
+	                        .addExtras(extras)
+	                        .build())
+	        		.build();
+		} else {
+	        return PushPayload.newBuilder()
+	        		.setPlatform(Platform.android())
+	        		.setAudience(Audience.newBuilder()
+	                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+	                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
+	                        .build())
+	        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), extras))
+	        		.build();
+		}
 	}
 	
 	private PushPayload buildPushObject_ios(TagAliasResult tagalias, JsonObject payload) {
