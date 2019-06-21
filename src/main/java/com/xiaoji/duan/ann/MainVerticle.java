@@ -1,15 +1,19 @@
 package com.xiaoji.duan.ann;
 
+import java.util.Arrays;
+
 import org.apache.commons.lang3.StringUtils;
 
 import cn.jiguang.common.ClientConfig;
 import cn.jpush.api.JPushClient;
 import cn.jpush.api.device.TagAliasResult;
 import cn.jpush.api.push.PushResult;
+import cn.jpush.api.push.model.Options;
 import cn.jpush.api.push.model.Platform;
 import cn.jpush.api.push.model.PushPayload;
 import cn.jpush.api.push.model.audience.Audience;
 import cn.jpush.api.push.model.audience.AudienceTarget;
+import cn.jpush.api.push.model.notification.IosNotification;
 import cn.jpush.api.push.model.notification.Notification;
 import io.vertx.amqpbridge.AmqpBridge;
 import io.vertx.core.AbstractVerticle;
@@ -98,18 +102,36 @@ public class MainVerticle extends AbstractVerticle {
 		return origin.length() > 512 ? origin.substring(0, 512) : origin;
 	}
 	
-	private PushPayload buildPushObject_android(TagAliasResult tagalias) {
+	private PushPayload buildPushObject_android(TagAliasResult tagalias, JsonObject payload) {
         return PushPayload.newBuilder()
         		.setPlatform(Platform.android())
         		.setAudience(Audience.newBuilder()
                         .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
                         .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
                         .build())
-        		.setMessage(cn.jpush.api.push.model.Message.newBuilder()
-                        .setMsgContent("Test from API Example - msgContent")
-                        .addExtra("from", "JPush")
+        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), null))
+        		.build();
+	}
+	
+	private PushPayload buildPushObject_ios(TagAliasResult tagalias, JsonObject payload) {
+        return PushPayload.newBuilder()
+        		.setPlatform(Platform.ios())
+        		.setAudience(Audience.newBuilder()
+                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
                         .build())
-        		.setNotification(Notification.alert("Test for Alert"))
+        		.setNotification(Notification.newBuilder()
+                        .addPlatformNotification(IosNotification.newBuilder()
+                                .setAlert(payload.getString("content"))
+                                .setBadge(5)
+                                .setSound("happy")
+                                .addExtra("from", "JPush")
+                                .build())
+                        .build())
+        		.setMessage(cn.jpush.api.push.model.Message.content(payload.getString("title")))
+        		.setOptions(Options.newBuilder()
+                        .setApnsProduction(false)
+                        .build())
         		.build();
 	}
 	
@@ -229,8 +251,10 @@ public class MainVerticle extends AbstractVerticle {
 							sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
 							
 							//同时通过极光推送
-							if (userinfo.containsKey("device")) {
-								JsonObject device = userinfo.getJsonObject("device", new JsonObject());
+							if (userinfo.getJsonObject("data").containsKey("device") && announceContent.containsKey("push")) {
+								JsonObject push = announceContent.getJsonObject("push", new JsonObject());
+								JsonObject device = userinfo.getJsonObject("data").getJsonObject("device", new JsonObject());
+								JsonArray platforms = device.getJsonArray("platforms", new JsonArray());
 								
 						        System.out.println("JPush consider with " + device.encode());
 						        
@@ -241,11 +265,24 @@ public class MainVerticle extends AbstractVerticle {
 									try {
 										//获取别名
 								        TagAliasResult aliasresult = jpushClient.getDeviceTagAlias(jpushId);
-								        
-								        PushPayload payload = buildPushObject_android(aliasresult);
-								        
-								        PushResult result = jpushClient.sendPush(payload);
-								        System.out.println("JPush responsed with " + result);
+								        System.out.println(jpushId + " has " + aliasresult.alias + " alias, " + Arrays.toString(aliasresult.tags.toArray(new TagAliasResult[0])) + " tags.");
+
+								        //设备没有设置别名,无法发送
+								        if (!StringUtils.isEmpty(aliasresult.alias)) {
+								        	if (platforms.contains("android")) {
+										        PushPayload payload = buildPushObject_android(aliasresult, push);
+										        
+										        PushResult result = jpushClient.sendPush(payload);
+										        System.out.println("JPush responsed with " + result);
+									        }
+								        	
+								        	if (platforms.contains("ios")) {
+										        PushPayload payload = buildPushObject_ios(aliasresult, push);
+										        
+										        PushResult result = jpushClient.sendPush(payload);
+										        System.out.println("JPush responsed with " + result);
+								        	}
+								        }
 									} catch(Exception e) {
 										e.printStackTrace();
 									}
