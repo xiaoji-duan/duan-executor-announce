@@ -256,11 +256,14 @@ public class MainVerticle extends AbstractVerticle {
 							sendShortMessages(openid, sms);
 
 						} else {
-							//账户已存在通过冥王星消息队列推送
-							String routingkey = "mwxing." + unionId;
-							System.out.println("announce by mwxing message to " + routingkey);
-							sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
-							
+							//冥王星推送判断
+							if (!announceContent.getJsonObject("mwxing", new JsonObject()).isEmpty()) {
+								//账户已存在通过冥王星消息队列推送
+								String routingkey = "mwxing." + unionId;
+								System.out.println("announce by mwxing message to " + routingkey);
+								sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+							}
+
 							//同时通过极光推送
 							if (userinfo.getJsonObject("data").containsKey("device") && announceContent.containsKey("push")) {
 								JsonObject push = announceContent.getJsonObject("push", new JsonObject());
