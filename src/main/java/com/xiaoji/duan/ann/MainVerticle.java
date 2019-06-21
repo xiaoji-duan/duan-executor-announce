@@ -272,7 +272,7 @@ public class MainVerticle extends AbstractVerticle {
 								String jpushId = device.getJsonObject("jpush", new JsonObject()).getString("id", "");
 
 								// 如果Jpush Id不存在则不推送
-								if (!StringUtils.isEmpty(jpushId)) {
+								if (!StringUtils.isEmpty(jpushId) && !push.isEmpty()) {
 									try {
 										//获取别名
 								        TagAliasResult aliasresult = jpushClient.getDeviceTagAlias(jpushId);
