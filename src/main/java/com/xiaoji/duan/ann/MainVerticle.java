@@ -1,6 +1,7 @@
 package com.xiaoji.duan.ann;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -103,13 +104,23 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private PushPayload buildPushObject_android(TagAliasResult tagalias, JsonObject payload) {
+		Map<String, String> extras = null;
+		
+		if (payload.containsKey("extras")) {
+			JsonObject d = payload.getJsonObject("extras");
+			
+			if (d != null) {
+				extras = d.mapTo(Map.class);
+			}
+		}
+		
         return PushPayload.newBuilder()
         		.setPlatform(Platform.android())
         		.setAudience(Audience.newBuilder()
                         .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
                         .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
                         .build())
-        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), null))
+        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), extras))
         		.build();
 	}
 	
