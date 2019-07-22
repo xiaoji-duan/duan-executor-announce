@@ -59,6 +59,27 @@
       <version>${vertx.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.xiaomi.miliao</groupId>
+      <artifactId>xmpush-server-api</artifactId>
+      <version>1.0.14-SNAPSHOT</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/MiPush_SDK_Server_2_2_21.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>com.googlecode.json-simple</groupId>
+	    <artifactId>json-simple</artifactId>
+	    <version>1.1.1</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/json-simple-1.1.1.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>com.xiaomi.miliao</groupId>
+	    <artifactId>xmpush-server-api</artifactId>
+	    <version>1.0.14-SNAPSHOT</version>
+	    <scope>system</scope>
+	    <systemPath>${project.basedir}/lib/MiPush_SDK_Server_2_2_21.jar</systemPath>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
       <version>${vertx.version}</version>

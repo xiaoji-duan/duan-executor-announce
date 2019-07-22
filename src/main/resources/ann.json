@@ -20,6 +20,20 @@
     "networkRecoveryInterval": 500,
     "automaticRecoveryEnabled": true
   },
+  "aliyun.rabbitmq": {
+    "user": "user1",
+    "password": "password1",
+    "host": "sa-rmq",
+    "port": 5672,
+    "virtualHost": "vhost1",
+    "connectionTimeout": 6000,
+    "connectionRetries": 5,
+    "requestedHeartbeat": 60,
+    "handshakeTimeout": 6000,
+    "requestedChannelMax": 5,
+    "networkRecoveryInterval": 500,
+    "automaticRecoveryEnabled": true
+  },
   "jpush": {
     "appkey": "",
     "secret": "",

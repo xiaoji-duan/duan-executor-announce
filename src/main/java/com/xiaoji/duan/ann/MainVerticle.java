@@ -1,10 +1,12 @@
 package com.xiaoji.duan.ann;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+
+import com.xiaomi.xmpush.server.Constants;
+import com.xiaomi.xmpush.server.Sender;
 
 import cn.jiguang.common.ClientConfig;
 import cn.jpush.api.JPushClient;
@@ -39,6 +41,7 @@ public class MainVerticle extends AbstractVerticle {
 	private AmqpBridge bridge = null;
 	private MongoClient mongodb = null;
 	private RabbitMQClient rabbitmq = null;
+	private RabbitMQClient aliyunrabbitmq = null;
 	private JPushClient jpushClient = null;
 
 	@Override
@@ -68,6 +71,18 @@ public class MainVerticle extends AbstractVerticle {
 				System.out.println("rabbitmq connected.");
 			} else {
 				System.out.println("rabbitmq connect failed with " + handler.cause().getMessage());
+			}
+		});
+		
+		RabbitMQOptions rmqaliyunconfig = new RabbitMQOptions(config().getJsonObject("aliyun.rabbitmq"));
+
+		aliyunrabbitmq = RabbitMQClient.create(vertx, rmqaliyunconfig);
+		
+		aliyunrabbitmq.start(handler -> {
+			if (handler.succeeded()) {
+				System.out.println("aliyun rabbitmq connected.");
+			} else {
+				System.out.println("aliyun rabbitmq connect failed with " + handler.cause().getMessage());
 			}
 		});
 		
@@ -103,6 +118,25 @@ public class MainVerticle extends AbstractVerticle {
 	
 	public static String getShortContent(String origin) {
 		return origin.length() > 512 ? origin.substring(0, 512) : origin;
+	}
+	
+	private com.xiaomi.xmpush.server.Message buildMIPushObject_android(JsonObject payload) {
+		String extras = "";
+		if (payload.containsKey("extras")) {
+			JsonObject d = payload.getJsonObject("extras");
+			
+			if (d != null) {
+				extras = d.encode();
+			}
+		}
+		
+		return new com.xiaomi.xmpush.server.Message.Builder()
+	        .title(payload.getString("title", ""))
+	        .description(payload.getString("content"))
+	        .payload(extras)
+	        .restrictedPackageName(config().getJsonObject("mipush", new JsonObject()).getString("packagename", "cn.sh.com.xj.timeApp"))
+	        .notifyType(1)     // 使用默认提示音提示
+	        .build();
 	}
 	
 	private PushPayload buildPushObject_android(TagAliasResult tagalias, JsonObject payload) {
@@ -400,9 +434,22 @@ public class MainVerticle extends AbstractVerticle {
         System.out.println("JPush consider with " + device.encode());
         
 		String jpushId = device.getJsonObject("jpush", new JsonObject()).getString("id", "");
+		String mipushId = device.getJsonObject("mipush", new JsonObject()).getString("id", "");
 
 		// 如果Jpush Id不存在则不推送
-		if (!StringUtils.isEmpty(jpushId) && !push.isEmpty()) {
+		if (!StringUtils.isEmpty(mipushId) && !mipushId.isEmpty()) {
+			try {
+				Constants.useOfficial();
+				
+				Sender sender = new Sender(config().getJsonObject("mipush", new JsonObject()).getString("appkey", ""));
+				
+				com.xiaomi.xmpush.server.Message message = buildMIPushObject_android(push);
+				
+				sender.send(message, mipushId, 3);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} else if (!StringUtils.isEmpty(jpushId) && !push.isEmpty()) {
 			try {
 				//获取别名
 		        TagAliasResult aliasresult = jpushClient.getDeviceTagAlias(jpushId);
@@ -436,6 +483,14 @@ public class MainVerticle extends AbstractVerticle {
 				System.out.println("Send rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
 			} else {
 				System.out.println("Send rabbit mq message failed with " + resultHandler.cause().getMessage());
+			}
+		});
+		
+		aliyunrabbitmq.basicPublish("amq.direct", "", new JsonObject().put("body", content.encode()), resultHandler -> {
+			if (resultHandler.succeeded()) {
+				System.out.println("Send aliyun rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+			} else {
+				System.out.println("Send aliyun rabbit mq message failed with " + resultHandler.cause().getMessage());
 			}
 		});
 	}
