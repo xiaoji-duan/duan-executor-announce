@@ -486,6 +486,14 @@ public class MainVerticle extends AbstractVerticle {
 			}
 		});
 		
+		aliyunrabbitmq.basicPublish(exchange, routingkey, new JsonObject().put("body", content.encode()), resultHandler -> {
+			if (resultHandler.succeeded()) {
+				System.out.println("Send aliyun rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+			} else {
+				System.out.println("Send aliyun rabbit mq message failed with " + resultHandler.cause().getMessage());
+			}
+		});
+		
 		aliyunrabbitmq.basicPublish("amq.direct", "", new JsonObject().put("body", content.encode()), resultHandler -> {
 			if (resultHandler.succeeded()) {
 				System.out.println("Send aliyun rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
