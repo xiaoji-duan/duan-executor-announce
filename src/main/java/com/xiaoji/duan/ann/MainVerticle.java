@@ -399,7 +399,7 @@ public class MainVerticle extends AbstractVerticle {
 							if (mwxing != null) {
 								JsonObject header = mwxing.getJsonObject("header");
 								if (header != null) {
-									header.put("sender", "xunfei-aiui");
+									header.put("sender", "xunfei/aiui");
 									mwxing.put("header", header);
 								}
 							}
