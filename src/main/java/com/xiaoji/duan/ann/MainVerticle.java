@@ -394,14 +394,24 @@ public class MainVerticle extends AbstractVerticle {
 						if (openId == null || StringUtils.isEmpty(openId)) {
 							System.out.println("inteligence message can not announce by sms to " + openid);
 						} else {
+							JsonObject mwxing = announceContent.getJsonObject("mwxing");
+							
+							if (mwxing != null) {
+								JsonObject header = mwxing.getJsonObject("header");
+								if (header != null) {
+									header.put("sender", "xunfei-aiui");
+									mwxing.put("header", header);
+								}
+							}
+							
 							if ("".equals(deviceid)) {
 								String routingkey = "mwxing.announce." + unionId;
 								System.out.println("announce by mwxing message to " + routingkey);
-								sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+								sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, mwxing);
 							} else {
 								String routingkey = "mwxing." + unionId + "." + deviceid;
 								System.out.println("announce by mwxing message to " + routingkey);
-								sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+								sendMQMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, mwxing);
 							}
 						}
 						
