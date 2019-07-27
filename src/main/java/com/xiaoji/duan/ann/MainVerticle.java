@@ -329,10 +329,16 @@ public class MainVerticle extends AbstractVerticle {
 
 							//同时通过极光推送
 							if (userinfo.getJsonObject("data").containsKey("device") && announceContent.containsKey("push")) {
-								JsonArray devices = userinfo.getJsonObject("data").getJsonArray("devices", new JsonArray());
-								
-								for (int i = 0; i < devices.size(); i++) {
-									JsonObject device = devices.getJsonObject(i);
+								if (config().getBoolean("announce.to.devices", Boolean.FALSE)) {
+									JsonArray devices = userinfo.getJsonObject("data").getJsonArray("devices", new JsonArray());
+									
+									for (int i = 0; i < devices.size(); i++) {
+										JsonObject device = devices.getJsonObject(i);
+										
+										pushMessage(userinfo, announceContent, device);
+									}
+								} else {
+									JsonObject device = userinfo.getJsonObject("data").getJsonObject("device");
 									
 									pushMessage(userinfo, announceContent, device);
 								}
