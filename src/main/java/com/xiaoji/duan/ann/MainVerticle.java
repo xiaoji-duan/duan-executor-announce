@@ -278,6 +278,8 @@ public class MainVerticle extends AbstractVerticle {
 				producer.send(new JsonObject()
 						.put("body", new JsonObject()
 								.put("context", announceContent)));
+				producer.end();
+
 			}
 			
 		} else if ("agenda_from_share".equals(announceType)) {
@@ -309,6 +311,8 @@ public class MainVerticle extends AbstractVerticle {
 								
 								MessageProducer<JsonObject> producer = bridge.createProducer("aak");
 								producer.send(new JsonObject().put("body", storage));
+								producer.end();
+
 							}
 							
 							// 发送短信通知
@@ -362,6 +366,8 @@ public class MainVerticle extends AbstractVerticle {
 							
 							MessageProducer<JsonObject> producer = bridge.createProducer("aak");
 							producer.send(new JsonObject().put("body", storage));
+							producer.end();
+
 						}
 
 						// 发送短信通知
@@ -437,6 +443,8 @@ public class MainVerticle extends AbstractVerticle {
 		
 		MessageProducer<JsonObject> producer = bridge.createProducer(next);
 		producer.send(new JsonObject().put("body", nextctx));
+		producer.end();
+
 		System.out.println("Consumer " + consumer + " send to [" + next + "] result [" + getShortContent(nextctx.encode()) + "]");
 
 	}
