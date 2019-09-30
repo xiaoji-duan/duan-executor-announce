@@ -3,6 +3,7 @@ package com.xiaoji.duan.ann;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 
 import com.xiaomi.xmpush.server.Constants;
@@ -256,6 +257,7 @@ public class MainVerticle extends AbstractVerticle {
 		}
 		
 		String announceType = data.getJsonObject("context").getString("announceType", "");
+		String announceDevice = data.getJsonObject("context").getString("announceDevice", "");
 
 		JsonObject announceContent = new JsonObject();
 		if (data.getJsonObject("context").getValue("announceContent") != null) {
@@ -282,6 +284,60 @@ public class MainVerticle extends AbstractVerticle {
 
 			}
 			
+		} else if ("data_sync".equals(announceType)) {
+			for (int pos = 0; pos < announceTo.size(); pos++) {
+				String openid = announceTo.getString(pos);
+				System.out.println("Announce to " + openid + " start process.");
+				Future<JsonObject> future = Future.future();
+				
+				future.setHandler(handler -> {
+					if (handler.succeeded()) {
+						JsonObject userinfo = handler.result();
+						
+						System.out.println("User info fetched with " + openid);
+						System.out.println(getShortContent(userinfo.encode()));
+						String unionId = userinfo.getJsonObject("data").getString("unionid");
+						String openId = userinfo.getJsonObject("data").getString("openid");
+
+						if (openId == null || StringUtils.isEmpty(openId)) {
+							// 发送短信通知
+							JsonObject sms = announceContent.getJsonObject("sms");
+							
+							sms.put("templateid", sms.getJsonObject("template").getString("newuser"));
+							
+							sendShortMessages(openid, sms);
+						} else {
+							//冥王星推送判断
+							if (!announceContent.getJsonObject("mwxing", new JsonObject()).isEmpty()) {
+								//账户已存在通过冥王星消息队列推送
+								String routingkey = "mwxing." + unionId + "." + Base64.encodeBase64URLSafeString(announceDevice.getBytes());
+								System.out.println("announce by mwxing message to " + routingkey);
+								
+								if ("browser".equals(announceDevice)) {
+									sendBrowserMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+								} else {
+									sendMobileMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+								}
+							}
+
+							//同时通过极光推送
+							if (!announceContent.getJsonObject("push", new JsonObject()).isEmpty()) {
+								JsonArray devices = userinfo.getJsonObject("data").getJsonArray("devices", new JsonArray());
+								
+								for (int i = 0; i < devices.size(); i++) {
+									JsonObject device = devices.getJsonObject(i);
+									
+									if (announceDevice.equals(device.getString("uuid", ""))) {
+										pushMessage(userinfo, announceContent, device);
+									}
+								}
+							}
+						}
+					}
+				});
+
+				getUserInfo(future, openid);
+			}
 		} else if ("agenda_from_share".equals(announceType)) {
 			for (int pos = 0; pos < announceTo.size(); pos++) {
 				String openid = announceTo.getString(pos);
@@ -527,6 +583,34 @@ public class MainVerticle extends AbstractVerticle {
 		});
 	}
 	
+	private void sendBrowserMessages(String exchange, String routingkey, JsonObject content) {
+		rabbitmq.basicPublish(exchange, routingkey, new JsonObject().put("body", content.encode()), resultHandler -> {
+			if (resultHandler.succeeded()) {
+				System.out.println("Send rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+			} else {
+				System.out.println("Send rabbit mq message failed with " + resultHandler.cause().getMessage());
+			}
+		});
+	}
+
+	private void sendMobileMessages(String exchange, String routingkey, JsonObject content) {
+		aliyunrabbitmq.basicPublish("amq.direct", "", new JsonObject().put("body", content.encode()), resultHandler -> {
+			if (resultHandler.succeeded()) {
+				System.out.println("Send aliyun rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+			} else {
+				System.out.println("Send aliyun rabbit mq message failed with " + resultHandler.cause().getMessage());
+			}
+		});
+		
+		aliyunrabbitmq.basicPublish(exchange, routingkey, new JsonObject().put("body", content.encode()), resultHandler -> {
+			if (resultHandler.succeeded()) {
+				System.out.println("Send aliyun rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+			} else {
+				System.out.println("Send aliyun rabbit mq message failed with " + resultHandler.cause().getMessage());
+			}
+		});
+	}
+
 	private void sendShortMessages(String phoneno, JsonObject content) {
 		System.out.println("sms starting...");
 		client.head(
