@@ -327,7 +327,9 @@ public class MainVerticle extends AbstractVerticle {
 								for (int i = 0; i < devices.size(); i++) {
 									JsonObject device = devices.getJsonObject(i);
 									
+									System.out.println("[data_sync_to_jpush] " + announceDevice + " <=> " + device.getString("uuid", ""));
 									if (announceDevice.equals(device.getString("uuid", ""))) {
+										System.out.println("[data_sync_to_jpush] openid");
 										pushMessage(userinfo, announceContent, device);
 									}
 								}
