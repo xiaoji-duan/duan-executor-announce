@@ -238,7 +238,8 @@ public class MainVerticle extends AbstractVerticle {
 		JsonObject data = received.body().getJsonObject("body");
 
 		Boolean cachestore = Boolean.valueOf(data.getJsonObject("context").getString("cache", "true"));
-		
+		String next = data.getJsonObject("context").getString("next");
+
 		JsonArray announceTo = new JsonArray();
 		
 		if (data.getJsonObject("context").getValue("announceTo") != null) {
@@ -251,6 +252,15 @@ public class MainVerticle extends AbstractVerticle {
 
 		if (announceTo == null || announceTo.isEmpty()) {
 			System.out.println("No announce target, process stopped.");
+
+			JsonObject nextctx = new JsonObject().put("context", new JsonObject().put("complete", new JsonObject()));
+			
+			MessageProducer<JsonObject> producer = bridge.createProducer(next);
+			producer.send(new JsonObject().put("body", nextctx));
+			producer.end();
+
+			System.out.println("Consumer " + consumer + " send to [" + next + "] result [" + getShortContent(nextctx.encode()) + "]");
+
 			return;
 		} else {
 			System.out.println("Announce target exist, process next.");
@@ -268,7 +278,6 @@ public class MainVerticle extends AbstractVerticle {
 		} else {
 			announceContent.mergeIn(new JsonObject().put("data", data.getJsonObject("context").getValue("announceContent", new JsonObject())));
 		}
-		String next = data.getJsonObject("context").getString("next");
 
 		if ("duan_announce".equals(announceType)) {
 			// 短应用内部通知
