@@ -316,13 +316,24 @@ public class MainVerticle extends AbstractVerticle {
 							
 							sendShortMessages(openid, sms);
 						} else {
+							// 如果通知设备未设定，使用用户默认设备
+							String targetDevice = announceDevice;
+							
+							if ("".equals(targetDevice)) {
+								JsonObject device = userinfo.getJsonObject("data").getJsonObject("device", new JsonObject());
+								
+								if (!device.isEmpty()) {
+									targetDevice = device.getString("uuid", "");
+								}
+							}
+							
 							//冥王星推送判断
 							if (!announceContent.getJsonObject("mwxing", new JsonObject()).isEmpty()) {
 								//账户已存在通过冥王星消息队列推送
-								String routingkey = "mwxing." + unionId + "." + Base64.encodeBase64URLSafeString(announceDevice.getBytes());
+								String routingkey = "mwxing." + unionId + "." + Base64.encodeBase64URLSafeString(targetDevice.getBytes());
 								System.out.println("announce by mwxing message to " + routingkey);
 								
-								if ("browser".equals(announceDevice)) {
+								if ("browser".equals(targetDevice)) {
 									sendBrowserMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
 								} else {
 									sendMobileMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
@@ -336,8 +347,8 @@ public class MainVerticle extends AbstractVerticle {
 								for (int i = 0; i < devices.size(); i++) {
 									JsonObject device = devices.getJsonObject(i);
 									
-									System.out.println("[data_sync_to_jpush] " + announceDevice + " <=> " + device.getString("uuid", ""));
-									if (announceDevice.equals(device.getString("uuid", ""))) {
+									System.out.println("[data_sync_to_jpush] " + targetDevice + " <=> " + device.getString("uuid", ""));
+									if (targetDevice.equals(device.getString("uuid", ""))) {
 										System.out.println("[data_sync_to_jpush] openid");
 										pushMessage(userinfo, announceContent, device);
 									}
