@@ -396,9 +396,13 @@ public class MainVerticle extends AbstractVerticle {
 							// 发送短信通知
 							JsonObject sms = announceContent.getJsonObject("sms");
 							
-							sms.put("templateid", sms.getJsonObject("template").getString("newuser"));
-							
-							sendShortMessages(openid, sms);
+							if (sms != null && !"".equals(sms.getJsonObject("template", new JsonObject()).getString("newuser", ""))) {
+								sms.put("templateid", sms.getJsonObject("template").getString("newuser"));
+								
+								sendShortMessages(openid, sms);
+							} else {
+								System.out.println("Short message not sent because no template.");
+							}
 
 						} else {
 							//冥王星推送判断
