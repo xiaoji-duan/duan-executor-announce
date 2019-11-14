@@ -18,6 +18,7 @@ import cn.jpush.api.push.model.Platform;
 import cn.jpush.api.push.model.PushPayload;
 import cn.jpush.api.push.model.audience.Audience;
 import cn.jpush.api.push.model.audience.AudienceTarget;
+import cn.jpush.api.push.model.notification.AndroidNotification;
 import cn.jpush.api.push.model.notification.IosAlert;
 import cn.jpush.api.push.model.notification.IosNotification;
 import cn.jpush.api.push.model.notification.Notification;
@@ -164,14 +165,37 @@ public class MainVerticle extends AbstractVerticle {
 	                        .build())
 	        		.build();
 		} else {
-	        return PushPayload.newBuilder()
-	        		.setPlatform(Platform.android())
-	        		.setAudience(Audience.newBuilder()
-	                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
-	                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
-	                        .build())
-	        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), extras))
-	        		.build();
+			String content = payload.getString("content");
+			
+			if (content.length() > 18) {
+				// 使用大文字样式
+		        return PushPayload.newBuilder()
+		        		.setPlatform(Platform.android())
+		        		.setAudience(Audience.newBuilder()
+		                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+		                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
+		                        .build())
+		        		.setNotification(Notification.newBuilder()
+		        				.addPlatformNotification(AndroidNotification.newBuilder()
+		        						.setAlert(content)
+		        						.setTitle(payload.getString("title"))
+		    	        				.setBigText(payload.getString("content"))
+		    	        				.setStyle(1)
+		    	        				.addExtras(extras)
+		    	        				.build())
+		        				.build())
+		        		.build();
+			} else {
+				// 使用Alert样式
+		        return PushPayload.newBuilder()
+		        		.setPlatform(Platform.android())
+		        		.setAudience(Audience.newBuilder()
+		                        .addAudienceTarget(AudienceTarget.tag(tagalias.tags))
+		                        .addAudienceTarget(AudienceTarget.alias(tagalias.alias))
+		                        .build())
+		        		.setNotification(Notification.android(payload.getString("content"), payload.getString("title"), extras))
+		        		.build();
+			}
 		}
 	}
 	
