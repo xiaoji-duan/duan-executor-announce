@@ -342,8 +342,11 @@ public class MainVerticle extends AbstractVerticle {
 						} else {
 							// 如果通知设备未设定，使用用户默认设备
 							String targetDevice = announceDevice;
+							Boolean hasTargetDevice = Boolean.TRUE;
 							
 							if ("".equals(targetDevice)) {
+								hasTargetDevice = Boolean.FALSE;
+								
 								JsonObject device = userinfo.getJsonObject("data").getJsonObject("device", new JsonObject());
 								
 								if (!device.isEmpty()) {
@@ -361,6 +364,13 @@ public class MainVerticle extends AbstractVerticle {
 									sendBrowserMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
 								} else {
 									sendMobileMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), routingkey, announceContent.getJsonObject("mwxing"));
+									
+									// 如果没有指定设备, 同时推送浏览器
+									if (!hasTargetDevice) {
+										String browerroutingkey = "mwxing." + unionId + "." + Base64.encodeBase64URLSafeString("browser".getBytes());
+										
+										sendBrowserMessages(config().getString("exchange.mwxing.direct", "exchange.mwxing.direct"), browerroutingkey, announceContent.getJsonObject("mwxing"));
+									}
 								}
 							}
 
