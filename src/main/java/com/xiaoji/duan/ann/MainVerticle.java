@@ -618,15 +618,15 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private void sendMQMessages(String exchange, String routingkey, JsonObject content) {
-		rabbitmq.basicPublish(exchange, routingkey, new JsonObject()
-				.put("properties", new JsonObject().put("expiration", "3600000"))
-				.put("body", content.encode()), resultHandler -> {
-			if (resultHandler.succeeded()) {
-				System.out.println("Send rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
-			} else {
-				System.out.println("Send rabbit mq message failed with " + resultHandler.cause().getMessage());
-			}
-		});
+//		rabbitmq.basicPublish(exchange, routingkey, new JsonObject()
+//				.put("properties", new JsonObject().put("expiration", "3600000"))
+//				.put("body", content.encode()), resultHandler -> {
+//			if (resultHandler.succeeded()) {
+//				System.out.println("Send rabbit mq message successed. [" + getShortContent(content.encode()) + "]");
+//			} else {
+//				System.out.println("Send rabbit mq message failed with " + resultHandler.cause().getMessage());
+//			}
+//		});
 		
 		aliyunrabbitmq.basicPublish("amq.direct", "", new JsonObject().put("body", content.encode()), resultHandler -> {
 			if (resultHandler.succeeded()) {
