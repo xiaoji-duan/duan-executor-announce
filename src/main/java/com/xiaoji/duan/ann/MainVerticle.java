@@ -211,7 +211,7 @@ public class MainVerticle extends AbstractVerticle {
 		}
 		
 		IosAlert alert = IosAlert.newBuilder()
-				.setTitleAndBody(payload.getString("title"), payload.getString("title"), payload.getString("content"))
+				.setTitleAndBody(payload.getString("title"), "", payload.getString("content"))
 				.build();
 		
         return PushPayload.newBuilder()
